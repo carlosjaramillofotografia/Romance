@@ -1,0 +1,21 @@
+{
+  "name": "romance-antygravity",
+  "version": "1.0.0",
+  "description": "Romance ∞ — Estado Antygravity — Conversational AI",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "start": "node server.js",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "openai": "^4.78.1"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "vite": "^6.1.0"
+  }
+}

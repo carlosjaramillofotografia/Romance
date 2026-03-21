@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+romance.db
+venv
+__pycache__
+romance_errors.log
+debug_output.txt
+test_dialogo.py
