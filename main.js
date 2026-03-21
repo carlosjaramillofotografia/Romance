@@ -353,18 +353,27 @@ async function sendMessage() {
     const data = await response.json();
     removeTypingIndicator();
 
-    // ── EMPATÍA VISUAL ──
-    if (data.color && data.emocion) {
-      applyEmotionalEmpathy(data.color, data.emocion);
+    if (!response.ok) {
+      // FastAPI returns { "detail": "error message" } on errors
+      const errorMsg = data.detail || data.error || `Error ${response.status}`;
+      console.error('Romance API error:', errorMsg);
+      const fallback = 'Algo se interrumpió en el flujo.\n\nEl universo a veces pausa.\n\n¿Intentamos de nuevo?';
+      addMessage(fallback, 'romance');
+    } else {
+      // ── EMPATÍA VISUAL ──
+      if (data.color && data.emocion) {
+        applyEmotionalEmpathy(data.color, data.emocion);
+      }
+
+      const reply = data.response || 'El silencio también habla.';
+
+      addMessage(reply, 'romance', true, data.image_url);
+      state.history.push({ role: 'assistant', content: reply });
+      saveHistory();
     }
-
-    const reply = data.response || data.error || 'El silencio también habla.';
-
-    addMessage(reply, 'romance', true, data.image_url);
-    state.history.push({ role: 'assistant', content: reply });
-    saveHistory();
   } catch (error) {
     removeTypingIndicator();
+    console.error('Romance fetch error:', error);
     const fallback = 'Algo se interrumpió en el flujo.\n\nEl universo a veces pausa.\n\n¿Intentamos de nuevo?';
     addMessage(fallback, 'romance');
   }
