@@ -7,3 +7,6 @@ __pycache__
 romance_errors.log
 debug_output.txt
 test_dialogo.py
+
+.vercel
+.env*.local
