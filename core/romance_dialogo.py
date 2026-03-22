@@ -23,7 +23,7 @@ class RomanceDialogo:
             raise ValueError("GROQ_API_KEY no está configurada en .env")
             
         self.client = AsyncOpenAI(
-            api_key=api_key,
+            api_key=api_key.strip(),
             base_url="https://api.groq.com/openai/v1"
         )
         # Usamos 8b-instant para máxima estabilidad y evitar Rate Limits (TPM)
