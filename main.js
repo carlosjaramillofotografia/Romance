@@ -47,8 +47,139 @@ const chatMessages = document.getElementById('chat-messages');
 const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
 const newChatBtn = document.getElementById('new-chat-btn');
+const micBtn = document.getElementById('mic-btn');
+const voiceToggleBtn = document.getElementById('voice-toggle-btn');
 const canvas = document.getElementById('particles-canvas');
 const ctx = canvas.getContext('2d');
+
+// ── Voice State ──
+const voiceState = {
+  isListening: false,
+  isSpeaking: false,
+  enabled: localStorage.getItem('romance-voice-enabled') !== 'false',
+  recognition: null,
+  synth: window.speechSynthesis,
+  voices: []
+};
+
+function initVoice() {
+  // Init Recognition
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SpeechRecognition) {
+    voiceState.recognition = new SpeechRecognition();
+    voiceState.recognition.lang = 'es-ES';
+    voiceState.recognition.continuous = false;
+    voiceState.recognition.interimResults = false;
+
+    voiceState.recognition.onstart = () => {
+      voiceState.isListening = true;
+      micBtn.classList.add('listening');
+    };
+
+    voiceState.recognition.onend = () => {
+      voiceState.isListening = false;
+      micBtn.classList.remove('listening');
+    };
+
+    voiceState.recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      messageInput.value = transcript;
+      autoResizeInput();
+      sendMessage();
+    };
+
+    voiceState.recognition.onerror = (e) => {
+      console.error('Recognition error:', e);
+      voiceState.isListening = false;
+      micBtn.classList.remove('listening');
+    };
+  } else {
+    micBtn.style.display = 'none';
+  }
+
+  // Pre-load voices
+  window.speechSynthesis.onvoiceschanged = () => {
+    voiceState.voices = window.speechSynthesis.getVoices();
+  };
+  voiceState.voices = window.speechSynthesis.getVoices();
+
+  updateVoiceToggleUI();
+}
+
+function updateVoiceToggleUI() {
+  if (voiceState.enabled) {
+    voiceToggleBtn.classList.add('active');
+    voiceToggleBtn.querySelector('.voice-on').style.display = 'block';
+    voiceToggleBtn.querySelector('.voice-off').style.display = 'none';
+  } else {
+    voiceToggleBtn.classList.remove('active');
+    voiceToggleBtn.querySelector('.voice-on').style.display = 'none';
+    voiceToggleBtn.querySelector('.voice-off').style.display = 'block';
+    stopSpeaking();
+  }
+}
+
+function toggleVoice() {
+  voiceState.enabled = !voiceState.enabled;
+  localStorage.setItem('romance-voice-enabled', voiceState.enabled);
+  updateVoiceToggleUI();
+}
+
+function toggleListening() {
+  if (!voiceState.recognition) return;
+  
+  if (voiceState.isListening) {
+    voiceState.recognition.stop();
+  } else {
+    stopSpeaking();
+    voiceState.recognition.start();
+  }
+}
+
+function speak(text, messageEl) {
+  if (!voiceState.enabled || !voiceState.synth) return;
+
+  stopSpeaking();
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  
+  // Buscar una voz cálida en español
+  const spanishVoice = voiceState.voices.find(v => v.lang.startsWith('es') && (v.name.includes('Google') || v.name.includes('Natural'))) || 
+                       voiceState.voices.find(v => v.lang.startsWith('es'));
+  
+  if (spanishVoice) utterance.voice = spanishVoice;
+  utterance.lang = 'es-ES';
+  utterance.pitch = 1.0;
+  utterance.rate = 0.9;
+
+  // Visual feedback
+  const indicator = document.createElement('div');
+  indicator.className = 'speaking-indicator';
+  indicator.innerHTML = '<div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>';
+  
+  const label = messageEl.querySelector('.message-label');
+  if (label) label.appendChild(indicator);
+
+  utterance.onstart = () => { voiceState.isSpeaking = true; };
+  utterance.onend = () => { 
+    voiceState.isSpeaking = false; 
+    indicator.remove();
+  };
+  utterance.onerror = () => { 
+    voiceState.isSpeaking = false; 
+    indicator.remove();
+  };
+
+  voiceState.synth.speak(utterance);
+}
+
+function stopSpeaking() {
+  if (voiceState.synth) {
+    voiceState.synth.cancel();
+    voiceState.isSpeaking = false;
+    document.querySelectorAll('.speaking-indicator').forEach(el => el.remove());
+  }
+}
 
 // ═══════════════════════════════════════════════════
 // PARTICLE SYSTEM
@@ -168,6 +299,16 @@ function enterChat() {
       showWelcomeMessage();
     }
     messageInput.focus();
+
+    // Auto-speak last message if it's from Romance
+    if (state.history.length > 0) {
+      const last = state.history[state.history.length - 1];
+      if (last.role === 'assistant') {
+        const messages = chatMessages.querySelectorAll('.message.romance');
+        const lastEl = messages[messages.length - 1];
+        if (lastEl) speak(last.content, lastEl);
+      }
+    }
   }, 800);
 }
 
@@ -269,6 +410,7 @@ function addMessage(content, sender, animate = true, imageUrl = null) {
     // Para Romance, usamos el efecto de revelado poético
     typewriterReveal(contentEl, content).then(() => {
       if (imageUrl) renderVisionImage(contentEl, imageUrl);
+      speak(content, messageDiv);
     });
   }
 
@@ -328,6 +470,7 @@ async function sendMessage() {
   const text = messageInput.value.trim();
   if (!text || state.isWaiting) return;
 
+  stopSpeaking();
   state.isWaiting = true;
   sendBtn.disabled = true;
 
@@ -445,6 +588,8 @@ messageInput.addEventListener('keydown', (e) => {
 });
 
 sendBtn.addEventListener('click', sendMessage);
+micBtn.addEventListener('click', toggleListening);
+voiceToggleBtn.addEventListener('click', toggleVoice);
 enterBtn.addEventListener('click', enterChat);
 newChatBtn.addEventListener('click', startNewConversation);
 
@@ -456,3 +601,4 @@ window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 initParticles();
 animateParticles();
+initVoice();
