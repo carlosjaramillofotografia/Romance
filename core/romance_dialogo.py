@@ -112,15 +112,11 @@ class RomanceDialogo:
                         continue
                 
                 # Para otros errores o si fallan los reintentos, logueamos y fallback
-                with open("romance_errors.log", "a", encoding="utf-8") as f:
-                    import traceback
-                    f.write(f"\n--- ERROR {os.urandom(2).hex()} ---\n")
-                    f.write(f"Mensaje: {mensaje_usuario}\n")
-                    f.write(f"Excepción: {str(e)}\n")
-                    f.write(traceback.format_exc())
-                    f.write("----------------\n")
+                import traceback
+                error_details = f"\n--- ERROR ---\nMensaje: {mensaje_usuario}\nExcepción: {str(e)}\n{traceback.format_exc()}\n----------------\n"
+                print(error_details)
                 
-                print(f"❌ ERROR CRÍTICO REGISTRADO: {e}")
+                print(f"❌ ERROR CRÍTICO: {e}")
                 fallback = "El silencio a veces\ntambién es respuesta.\n\nAlgo interrumpió el flujo.\n\n¿Intentamos de nuevo?"
                 self.memoria.add_message(session_id, "assistant", fallback)
                 return fallback, "#4a148c", "error", None

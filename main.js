@@ -57,6 +57,7 @@ const voiceState = {
   isListening: false,
   isSpeaking: false,
   enabled: localStorage.getItem('romance-voice-enabled') !== 'false',
+  autoContinuous: true, // Modo ininterrumpido
   recognition: null,
   synth: window.speechSynthesis,
   voices: []
@@ -164,6 +165,15 @@ function speak(text, messageEl) {
   utterance.onend = () => { 
     voiceState.isSpeaking = false; 
     indicator.remove();
+    
+    // Conversación Ininterrumpida: Volver a escuchar si el modo está activo
+    if (voiceState.autoContinuous && voiceState.enabled && !state.isWaiting) {
+      setTimeout(() => {
+        if (!voiceState.isListening && !voiceState.isSpeaking) {
+          toggleListening();
+        }
+      }, 600);
+    }
   };
   utterance.onerror = () => { 
     voiceState.isSpeaking = false; 
@@ -470,6 +480,10 @@ async function sendMessage() {
   const text = messageInput.value.trim();
   if (!text || state.isWaiting) return;
 
+  if (voiceState.isListening) {
+    voiceState.recognition.stop();
+  }
+  
   stopSpeaking();
   state.isWaiting = true;
   sendBtn.disabled = true;
