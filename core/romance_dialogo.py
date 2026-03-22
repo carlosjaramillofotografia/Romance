@@ -1,7 +1,7 @@
 import os
 import json
 import asyncio
-from openai import AsyncOpenAI
+from groq import AsyncGroq
 from typing import List, Dict, Optional, Tuple
 
 from .romance_core import RomanceCore
@@ -20,11 +20,10 @@ class RomanceDialogo:
         # Necesita la API key de Groq
         api_key = os.environ.get("GROQ_API_KEY")
         if not api_key:
-            raise ValueError("GROQ_API_KEY no está configurada en .env")
+            raise ValueError("GROQ_API_KEY no está configurada")
             
-        self.client = AsyncOpenAI(
-            api_key=api_key.strip(),
-            base_url="https://api.groq.com/openai/v1"
+        self.client = AsyncGroq(
+            api_key=api_key.strip()
         )
         # Usamos 8b-instant para máxima estabilidad y evitar Rate Limits (TPM)
         self.modelo = "llama-3.1-8b-instant"
