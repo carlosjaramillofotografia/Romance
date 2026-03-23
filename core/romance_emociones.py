@@ -1,7 +1,7 @@
 # core/romance_emociones.py
 import os
 import json
-from openai import AsyncOpenAI
+from groq import AsyncGroq
 from typing import Dict, Any
 
 class RomanceEmociones:
@@ -16,9 +16,8 @@ class RomanceEmociones:
         if not api_key:
             raise ValueError("GROQ_API_KEY no está configurada")
             
-        self.client = AsyncOpenAI(
-            api_key=api_key,
-            base_url="https://api.groq.com/openai/v1"
+        self.client = AsyncGroq(
+            api_key=api_key
         )
         # Usamos el modelo más rápido de Groq para análisis en tiempo real
         self.modelo = "llama-3.1-8b-instant"

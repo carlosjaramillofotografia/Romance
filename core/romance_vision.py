@@ -2,7 +2,7 @@
 import os
 import json
 import urllib.parse
-from openai import AsyncOpenAI
+from groq import AsyncGroq
 from typing import Optional, Dict, Any
 
 class RomanceVision:
@@ -17,9 +17,8 @@ class RomanceVision:
         if not api_key:
             raise ValueError("GROQ_API_KEY no está configurada")
             
-        self.client = AsyncOpenAI(
-            api_key=api_key,
-            base_url="https://api.groq.com/openai/v1"
+        self.client = AsyncGroq(
+            api_key=api_key
         )
         self.modelo = "llama-3.1-8b-instant"
         
