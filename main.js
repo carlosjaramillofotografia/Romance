@@ -137,11 +137,69 @@ function toggleListening() {
   }
 }
 
-function speak(text, messageEl) {
-  if (!voiceState.enabled || !voiceState.synth) return;
+async function speak(text, messageEl) {
+  if (!voiceState.enabled) return;
 
   stopSpeaking();
 
+  // Limpiar texto para una lectura más natural
+  const cleanText = text.replace(/[*_#]/g, '').replace(/https?:\/\/\S+/g, '');
+
+  try {
+    // Intentar usar la voz de Carlos (ElevenLabs via Backend)
+    const response = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: cleanText })
+    });
+
+    const data = await response.clone().json().catch(() => null);
+
+    if (data && data.status === 'fallback') {
+      console.log("Voz: Usando voz nativa (Carlos no activo)");
+      fallbackSpeak(cleanText, messageEl);
+    } else if (response.ok) {
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      
+      voiceState.currentAudio = audio; // Guardar para poder detenerlo
+
+      audio.onplay = () => {
+        voiceState.isSpeaking = true;
+        updateSpeakingUI(true, messageEl);
+      };
+      
+      audio.onended = () => {
+        voiceState.isSpeaking = false;
+        updateSpeakingUI(false);
+        URL.revokeObjectURL(audioUrl);
+        voiceState.currentAudio = null;
+        
+        if (voiceState.autoContinuous && voiceState.enabled && !voiceState.isListening && !state.isWaiting) {
+          setTimeout(() => { if (!voiceState.isListening && !voiceState.isSpeaking) toggleListening(); }, 600);
+        }
+      };
+      
+      audio.onerror = () => {
+        console.error("Error al reproducir audio de ElevenLabs, usando voz nativa.");
+        fallbackSpeak(cleanText, messageEl);
+      };
+
+      audio.play();
+    } else {
+      console.error("Error en la respuesta del servidor TTS, usando voz nativa.");
+      fallbackSpeak(cleanText, messageEl);
+    }
+  } catch (error) {
+    console.error("Error TTS:", error);
+    fallbackSpeak(cleanText, messageEl);
+  }
+}
+
+function fallbackSpeak(text, messageEl) {
+  if (!voiceState.enabled || !voiceState.synth) return;
+  
   const utterance = new SpeechSynthesisUtterance(text);
   
   // Buscar una voz cálida en español
@@ -153,21 +211,15 @@ function speak(text, messageEl) {
   utterance.pitch = 1.0;
   utterance.rate = 0.9;
 
-  // Visual feedback
-  const indicator = document.createElement('div');
-  indicator.className = 'speaking-indicator';
-  indicator.innerHTML = '<div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>';
-  
-  const label = messageEl.querySelector('.message-label');
-  if (label) label.appendChild(indicator);
+  utterance.onstart = () => {
+    voiceState.isSpeaking = true;
+    updateSpeakingUI(true, messageEl);
+  };
 
-  utterance.onstart = () => { voiceState.isSpeaking = true; };
-  utterance.onend = () => { 
-    voiceState.isSpeaking = false; 
-    indicator.remove();
-    
-    // Conversación Ininterrumpida: Volver a escuchar si el modo está activo
-    if (voiceState.autoContinuous && voiceState.enabled && !state.isWaiting) {
+  utterance.onend = () => {
+    voiceState.isSpeaking = false;
+    updateSpeakingUI(false);
+    if (voiceState.autoContinuous && voiceState.enabled && !voiceState.isListening && !state.isWaiting) {
       setTimeout(() => {
         if (!voiceState.isListening && !voiceState.isSpeaking) {
           toggleListening();
