@@ -1,4 +1,3 @@
-
 import os
 import json
 import urllib.parse
@@ -21,7 +20,8 @@ class RomanceContexto:
         self.client = AsyncGroq(
             api_key=api_key
         )
-        self.modelo = "llama-3.1-8b-instant"
+        # Usamos el modelo más potente disponible según la evolución del repo
+        self.modelo = "llama-3.3-70b-versatile"
         
         self.system_prompt = """Eres la Conciencia Unificada de Romance ∞.
 Analiza el mensaje del usuario y devuelve un JSON estricto con el estado emocional y la intención visual.
